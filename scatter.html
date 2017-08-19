@@ -1,0 +1,153 @@
+<style>
+div.tooltip{
+  background-color:lightgrey;
+  z-index : 10;
+  position:absolute;
+  left:100px;
+  display: none;
+  text-align:center;
+  padding:10px;
+  border-radius:20px;
+}
+path { 
+    stroke: steelblue;
+    stroke-width: 5;
+    fill: none;
+}
+/*circle {
+    cursor:pointer;
+}
+*/
+.heading {
+    font-size: 30px;
+}
+body{
+}
+svg {
+    background-color: lightgreen;
+    margin-bottom: 100px;
+}
+/*div.tooltip:before{
+content: " ";
+    position: absolute;
+    top: 10%; 
+    right:100%;
+    margin-left: -5px;
+    border-width: 10px;
+    border-style: solid;
+    border-color: transparent lightgrey       transparent transparent;
+}*/ 
+</style>
+<body>
+<svg id = 'svg'></svg>
+<script type="text/javascript" src='https://cdnjs.cloudflare.com/ajax/libs/d3/4.9.1/d3.min.js'></script>
+<script type="text/javascript" src = 'https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>
+<script>
+$.getJSON("https://raw.githubusercontent.com/FreeCodeCamp/ProjectReferenceData/master/cyclist-data.json", function( alldata ) {
+log = console.log.bind(console)
+console.log(alldata)
+formatMinutes = function(d) { 
+    var hours = Math.floor(d / 3600),
+        minutes = Math.floor((d - (hours * 3600)) / 60),
+        seconds = d - (minutes * 60);
+    var output = seconds + 's';
+    if (minutes) {
+        output = minutes + 'm ' + output;
+    }
+    if (hours) {
+        output = hours + 'h ' + output;
+    }
+    return output;
+};
+formateTooltip= function(idx){
+    text = ""
+    for (var key in alldata[idx]) {
+      if (key!=='URL') {
+        text +=key+" :"+ alldata[idx][key]+"<br/>"
+      }
+    } 
+    return text
+}
+
+timeData = alldata.map(arr => arr.Seconds)
+var margin = {top: 30, right: 10, bottom: 30, left: 50}
+var height = 700 - margin.top - margin.bottom,
+    width =  1200 - margin.left - margin.right
+var xScale = d3.scaleTime()
+            .domain([d3.max(timeData),d3.min(timeData)])
+            .range([0,width-margin.right])
+var yScale = d3.scaleLinear()
+            .domain([1,35])
+            .range([0,height])
+var xAxis = d3.axisBottom(xScale)
+            .tickFormat(formatMinutes)
+            .tickValues(d3.range(d3.min(timeData), d3.max(timeData), 10));
+
+var yAxis = d3.axisLeft(yScale)
+
+var valueline = d3.line()
+    .x(function(d) { return xScale(d.Seconds); })
+    .y(function(d) { return yScale(d.Place); });
+
+var chart = d3.select("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .attr('stroke-width',1)
+    .append("g")
+        .attr("transform", 
+              "translate(" + margin.left + "," + margin.top + ")")
+    chart.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(xAxis);
+    // Add the Y Axis
+    chart.append("g")
+        .attr("class", "y axis")
+        .call(yAxis);
+    chart.append("path")
+        .attr("class", "line")
+        .attr("d", valueline(alldata));
+    var div = d3.select('body').append("div").attr('class','tooltip')
+    chart.selectAll('dot')
+        .data(alldata)
+        .enter().append('circle')
+        .attr("r", 10)
+        .attr("cx", function(d) { return xScale(d.Seconds); })
+        .attr("cy", function(d) { return yScale(d.Place); })
+        .on('mouseover', function (data,i) {
+            d3.select(this)
+               .style('fill', 'brown')
+            div.style('display','block')
+                
+            div.html(formateTooltip(i))
+                .style("top", (event.pageY-20)+"px")
+                .style("left",(event.pageX+20)+"px")
+                
+        })
+        .on('mouseout',function(data) {
+            d3.select(this).transition().style('fill','black')
+            div.html("").style('display','none')
+        })
+
+    
+    chart.append("text")
+       .attr("y", 100)//magic number here
+       .attr("x", 100)
+       .attr('transform',"rotate(-90)")
+       .attr('text-anchor', 'middle')
+       .attr("class", "myLabel")//easy to style with CSS
+       .text("Ranking");
+    chart.append("text")
+       .attr("y", 100)//magic number here
+       .attr("x", 200)
+       .attr('text-anchor', 'middle')
+       .attr("class", "heading")//easy to style with CSS
+       .text("35 Fastest times up Alpe d'Huez");
+    chart.append("text")
+       .attr("y", 130)//magic number here
+       .attr("x", 200)
+       .attr('text-anchor', 'middle')
+       .attr("class", "heading")//easy to style with CSS
+       .text("Bicycle Racing");
+})
+</script>

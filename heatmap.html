@@ -1,0 +1,184 @@
+<style>
+div.tooltip{
+  background-color:lightgrey;
+  z-index : 100;
+  position:absolute;
+  left:100px;
+  display: block;
+  text-align:center;
+  padding:10px;
+  border-radius:20px;
+}
+path { 
+    stroke: steelblue;
+    stroke-width: 0;
+    fill: none;
+}
+
+.heading {
+    font-size: 30px;
+}
+body{
+
+}
+svg {
+    border:1px solid black;
+    cursor: pointer;
+    background-color: lightgrey;
+}
+/*div.tooltip:before{
+content: " ";
+    position: absolute;
+    top: 10%; 
+    right:100%;
+    margin-left: -5px;
+    border-width: 10px;
+    border-style: solid;
+    border-color: transparent lightgrey       transparent transparent;
+}*/ 
+</style>
+<body>
+<svg id = 'svg'></svg>
+<script type="text/javascript" src='https://cdnjs.cloudflare.com/ajax/libs/d3/4.9.1/d3.min.js'></script>
+<script type="text/javascript" src = 'https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>
+<script>
+$.getJSON("https://raw.githubusercontent.com/FreeCodeCamp/ProjectReferenceData/master/global-temperature.json", function( alldata ) {
+console.log(alldata)
+var chartdata = alldata.monthlyVariance
+chartdata.forEach(function(arr){arr.variance += 8.66  })
+console.log(d3.max(chartdata,d=>d.variance))
+console.log(d3.min(chartdata,d=>d.variance))
+// Initailizing
+years = chartdata.map(arr=>arr.year)
+var margin = {top: 100, right: 30, bottom: 100, left: 100}
+var height = 700 - margin.top - margin.bottom,
+    width =  1400 - margin.left - margin.right
+
+// xScale and xAxis
+var xScale = d3.scaleLinear()
+            .domain([1753,d3.max(years)])
+            .range([margin.left , width-margin.right])
+
+var xAxis = d3.axisBottom(xScale)
+              .ticks(10)
+              .tickFormat(d => d.toString())
+
+var mL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+var yScale = d3.scaleLinear()
+            .domain([1,13])
+            .range([height,0])
+var yAxis = d3.axisLeft(yScale)
+              .tickFormat(d=>mL[d-1])
+formateTooltip= function(d){
+    text = ""
+    text += mL[d.month-1]+' -'+d.year+'<br/>'
+    text += 'Celsius: '+d.variance.toString().slice(0,4)+' &#8451;'
+    return text
+}
+
+var chart = d3.select("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .attr('stroke-width',0)
+    
+    chart.append("g")
+        .attr("transform", 
+              "translate(" + margin.left + "," + margin.top + ")")
+    // Add the X Axis 
+    chart.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + (height+margin.top) + ")")
+        .attr('stroke-width',1)
+        .call(xAxis)
+
+    // Add the Y Axis
+    chart.append("g")
+        .attr("class", "y axis")
+        .attr("transform", "translate("+margin.left+  ","+margin.top+")")
+        .call(yAxis)
+      .selectAll(".tick text")
+        .style("text-anchor", "end")
+        .attr("x", -10)
+        .attr("y", -20)
+        .attr('font-size',15)
+
+
+    // tooltip
+    var div = d3.select('body').append("div").attr('class','tooltip')
+    
+    var barWidth = (width / chartdata.length)*12;
+
+    var bar = chart.selectAll("rect")
+      .data(chartdata)
+      .enter().append("g")
+      .attr("transform", function(d) { return "translate(-2,"+(margin.top-40)+")"; })
+    colors = ["#ffffd9","#edf8b1","#c7e9b4","#7fcdbb","#41b6c4","#1d91c0","#225ea8","#253494","#081d58",'#000000']
+    function color(d) {
+         return colors[Math.floor(d.variance/1.5)]
+    }
+    var dynamicColor
+    bar.append('rect')
+        .attr("height", height/12)
+        .attr("width", barWidth)
+        .style('fill',function(d){return color(d)})
+        .attr("x", function(d) { return xScale(d.year); })
+        .attr("y", function(d) { return yScale(d.month); })
+        .on('mouseover', function (data) {
+            dynamicColor = this.style.fill
+            d3.select(this)
+               .style('fill', 'brown')
+                
+            div.style('display','block')
+                .html(formateTooltip(data))
+                .style("top", (event.pageY-20)+"px")
+                .style("left",(event.pageX+20)+"px")
+                
+        })
+        .on('mouseout',function(data) {
+            d3.select(this).style('fill',dynamicColor)
+            div.html("").style('display','none')
+        })
+
+    
+    chart.append("text")
+       .attr("y", 100)//magic number here
+       .attr("x", 100)
+       .attr('transform',"rotate(-90)")
+       .attr('text-anchor', 'middle')
+       .attr("class", "myLabel")//easy to style with CSS
+       .text("Ranking");
+    chart.append("text")
+       .attr("y", 50)//magic number here
+       .attr("x", 700)
+       .attr('text-anchor', 'middle')
+       .attr("class", "heading")//easy to style with CSS
+       .text("Monthly Global Land-Surface Temperature");
+    chart.append("text")
+       .attr("y", 90)//magic number here
+       .attr("x", 700)
+       .attr('text-anchor', 'middle')
+       .attr("class", "heading")//easy to style with CSS
+       .text("1753 - 2015");
+    chart.selectAll('card')
+          .data(colors).enter()
+          .append('rect')
+          .attr("transform", function(d) { return "translate(-2,"+(margin.top-40)+")"; })
+          .attr("height", 30)
+          .attr("width", 50)
+          .style('fill',function(d,idx){return colors[idx]})
+          .attr("x", function(d,idx) { return 750+50*idx; })
+          .attr("y", function(d,idx) { return 580; })
+    chart.selectAll('cardText')
+          .data(colors).enter()
+          .append('text')
+          .attr("transform", function(d) { return "translate(-2,"+(margin.top-40)+")"; })
+          .attr("height", 30)
+          .attr("width", 50)
+          .style('fill',function(d,idx){return colors[idx]})
+          .attr("x", function(d,idx) { return 760+50*idx; })
+          .attr("y", function(d,idx) { return 630; })
+          .text(function(d,idx){
+            return " "+idx*1.5+'~'
+          })
+})
+</script>

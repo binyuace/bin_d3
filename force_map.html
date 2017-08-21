@@ -1,0 +1,162 @@
+<link rel="stylesheet" type="text/css" href="flags/flags.css">
+<style>
+div.tooltip{
+  background-color:lightgrey;
+  z-index : 100;
+  position:absolute;
+  left:100px;
+  display: block;
+  text-align:center;
+  padding:10px;
+  border-radius:20px;
+}
+.heading {
+    font-size: 30px;
+}
+body{
+	background-color: lightgrey;
+}
+img {
+	position: absolute;
+	z-index:10;
+	cursor: pointer;
+}
+svg {
+    border:1px solid black;
+    cursor: pointer;
+    background-color: rgba(0,0,0,0.1);
+}
+</style>
+<body>
+<div class='images'></div>
+<svg id = 'svg'></svg>
+
+<script type="text/javascript" src='https://cdnjs.cloudflare.com/ajax/libs/d3/4.9.1/d3.min.js'></script>
+<script type="text/javascript" src = 'https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>
+
+<script>
+$.getJSON("https://raw.githubusercontent.com/DealPete/forceDirected/master/countries.json", function( alldata ) {
+console.log(alldata)
+
+// receiving links and nodes
+alldata.nodes.forEach((arr,idx) => {arr.id = idx})
+console.log(alldata.nodes)
+var	height = 700,
+    width =  1400
+
+var svg = d3.select("svg")
+        .attr("width", width)
+        .attr("height", height)
+svg.append("text")
+       .attr("y", 90)//magic number here
+       .attr("x", 300)
+       .attr('text-anchor', 'middle')
+       .attr("class", "heading")//easy to style with CSS
+       .attr('opacity',0.6)
+       .text("Force Directed Graph of State Contiguity");
+var simulation = d3.forceSimulation()
+    .force("link", d3.forceLink().id(function(d) { return d.id; }))
+    .force("charge", d3.forceManyBody())
+    .force("center", d3.forceCenter(width / 2, height / 2));
+
+var link = svg.append('g')
+				.selectAll('line')
+				.data(alldata.links)
+				.enter().append('line')
+				.attr('stroke-width',2)
+				.attr('stroke','black')
+
+var node = svg.append('g')
+				.selectAll('image')
+				.data(alldata.nodes)
+				.enter().append('image')
+				.attr('xlink:href',"blank.gif")
+				.attr('class',d=>'flag flag-'+d.code)
+				.attr('alt',d=>d.country)
+				.attr('height','30px')
+				.attr('width','50px')
+				.call(
+					d3.drag()
+			          .on("start", dragstarted)
+			          .on("drag", dragged)
+			          .on("end", dragended)
+		          );
+var div = d3.select('body').append("div").attr('class','tooltip')
+
+
+simulation.nodes(alldata.nodes)
+			.on('tick',ticked)
+simulation.force('link')
+			.links(alldata.links)
+			.distance(50)
+simulation.force('charge')
+			.distanceMax(200)
+console.log(alldata.nodes)
+var images = d3.select('.images')
+		.selectAll('images')
+		.data(alldata.nodes)
+		.enter().append('img')
+		.attr('src','blank.gif')
+		.attr('class',d=>'flag flag-'+d.code)
+		.attr('height','40px')
+		.attr('width','60px')
+		.style('position','absolute')
+		.style('left',d=>(-d.x-10+width/2)+'px')
+		.style('top',d=>(-d.y+height/2)+'px')
+		.call(
+			d3.drag()
+	          .on("start", dragstarted)
+	          .on("drag", dragged)
+	          .on("end", dragended)
+          );
+images.on('mouseover', function (data) {
+        div.html(data.country)
+        .style("top", (event.pageY-10)+"px")
+        .style("left",(event.pageX+10)+"px")
+        .style('opacity',0.7)
+  })
+  .on('mouseout',function(data) {
+    div.style('opacity',0)
+  })
+   .on('mousemove',function(data) {
+     div.style("top", (event.pageY-10)+"px")
+        .style("left",(event.pageX+10)+"px")
+  })
+
+
+function ticked() {
+	var r = 6
+	
+	node.attr('x',d=>d.x=Math.max(r, Math.min(width - r, d.x)))
+		.attr('y',d=>d.y=Math.max(r, Math.min(height - r, d.y)))
+
+	images.style('left',d=>d.x=Math.max(r, Math.min(width - r, d.x))+8)
+			.style('top',d=>d.y=Math.max(r, Math.min(height - r, d.y))+10)
+	link.attr('x1',d=>d.source.x)
+		.attr('y1',d=>d.source.y)
+		.attr('x2',d=>d.target.x)
+		.attr('y2',d=>d.target.y)
+}
+function dragstarted(d) {
+	if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+  	d.fx = d.x;
+  	d.fy = d.y;
+}
+
+function dragged(d) {
+  d.fx = d3.event.x;
+  d.fy = d3.event.y;
+}
+
+function dragended(d) {
+  if (!d3.event.active) simulation.alphaTarget(0);
+  d.fx = null;
+  d.fy = null;
+}
+})
+
+
+
+
+
+</script>
